@@ -1,0 +1,42 @@
+{
+  "name": "projectarium-pwa",
+  "version": "1.0.0",
+  "description": "PWA for frontend use of Projectarium v2",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sean-obeirne/projectarium-pwa.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sean-obeirne/projectarium-pwa/issues"
+  },
+  "homepage": "https://github.com/sean-obeirne/projectarium-pwa#readme",
+  "dependencies": {
+    "@next/third-parties": "^16.1.6",
+    "next": "^16.1.6",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/typography": "^0.5.19",
+    "@types/node": "^25.2.3",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.4.24",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^16.1.6",
+    "next-pwa": "^5.6.0",
+    "postcss": "^8.5.6",
+    "sharp": "^0.34.5",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.9.3"
+  }
+}
