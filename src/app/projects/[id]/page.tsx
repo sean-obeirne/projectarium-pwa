@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Project, Task } from '@/types';
-import { getProject, getTasks, deleteProject } from '@/lib/api';
+import { getProject, getTasks, deleteProject, deleteTask } from '@/lib/api';
 import TaskList from '@/components/TaskList';
 
 export default function ProjectDetailPage() {
@@ -149,8 +149,14 @@ export default function ProjectDetailPage() {
         tasks={tasks}
         onEdit={(task) => router.push(`/tasks/${task.id}/edit`)}
         onDelete={async (taskId) => {
-          // Refresh the page to reload tasks
-          router.refresh();
+          if (!confirm('Are you sure you want to delete this task?')) return;
+          try {
+            await deleteTask(taskId);
+            // Reload the tasks after deletion
+            await loadProjectData();
+          } catch (err) {
+            alert('Failed to delete task');
+          }
         }}
       />
     </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getProject, updateProject } from '@/lib/api';
 import { Project, CreateProjectInput, UpdateProjectInput } from '@/types';
@@ -14,13 +14,7 @@ export default function EditProjectPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (projectId) {
-      loadProject();
-    }
-  }, [projectId]);
-
-  const loadProject = async () => {
+  const loadProject = useCallback(async () => {
     try {
       const data = await getProject(projectId);
       setProject(data);
@@ -30,7 +24,13 @@ export default function EditProjectPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId, router]);
+
+  useEffect(() => {
+    if (projectId) {
+      loadProject();
+    }
+  }, [projectId, loadProject]);
 
   const handleSubmit = async (data: CreateProjectInput | UpdateProjectInput) => {
     try {
