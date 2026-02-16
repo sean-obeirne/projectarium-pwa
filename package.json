@@ -20,8 +20,8 @@
   },
   "homepage": "https://github.com/sean-obeirne/projectarium-pwa#readme",
   "dependencies": {
-    "@next/third-parties": "^14.2.35",
-    "next": "^14.2.35",
+    "@next/third-parties": "^16.1.6",
+    "next": "^16.1.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
