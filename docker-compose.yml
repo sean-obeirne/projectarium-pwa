@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  pwa:
+    image: projectarium-pwa:latest
+    container_name: projectarium-pwa
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8888/api}
+    restart: unless-stopped
+    networks:
+      - projectarium-network
+
+networks:
+  projectarium-network:
+    driver: bridge

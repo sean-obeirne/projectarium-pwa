@@ -10,6 +10,7 @@ const withPWA = require('next-pwa')({
 const nextConfig = {
   reactStrictMode: true,
   turbopack: {}, // Enable Turbopack with empty config for Next.js 16
+  output: 'standalone', // Required for Docker
 };
 
 module.exports = withPWA(nextConfig);
