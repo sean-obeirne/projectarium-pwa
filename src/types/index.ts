@@ -1,49 +1,36 @@
 export interface Project {
-  id: string;
+  id: number;
   name: string;
   description: string;
-  status: 'active' | 'completed' | 'archived';
-  createdAt: string;
-  updatedAt: string;
+  path: string;
+  file: string;
+  priority: number;
+  status: string;
+  language: string;
 }
 
-export interface Task {
-  id: string;
-  projectId: string;
-  title: string;
+export interface Todo {
+  id: number;
   description: string;
-  status: 'pending' | 'in-progress' | 'completed';
-  priority: 'low' | 'medium' | 'high';
-  dueDate?: string;
-  createdAt: string;
-  updatedAt: string;
+  priority: number;
+  deleted: boolean;
+  project_id: number | null;
 }
 
-export interface CreateProjectInput {
-  name: string;
-  description: string;
-  status?: 'active' | 'completed' | 'archived';
-}
+export type KanbanStatus = 'abandoned' | 'backlog' | 'active' | 'completed';
 
-export interface UpdateProjectInput {
-  name?: string;
-  description?: string;
-  status?: 'active' | 'completed' | 'archived';
-}
+export const KANBAN_COLUMNS: { key: KanbanStatus; label: string }[] = [
+  { key: 'abandoned', label: 'Abandoned' },
+  { key: 'backlog', label: 'Backlog' },
+  { key: 'active', label: 'Active' },
+  { key: 'completed', label: 'Completed' },
+];
 
-export interface CreateTaskInput {
-  projectId: string;
-  title: string;
-  description: string;
-  status?: 'pending' | 'in-progress' | 'completed';
-  priority?: 'low' | 'medium' | 'high';
-  dueDate?: string;
-}
-
-export interface UpdateTaskInput {
-  title?: string;
-  description?: string;
-  status?: 'pending' | 'in-progress' | 'completed';
-  priority?: 'low' | 'medium' | 'high';
-  dueDate?: string;
+export function normalizeStatus(status: string): KanbanStatus {
+  const lower = status.toLowerCase().trim();
+  if (lower === 'done' || lower === 'completed' || lower === 'finished') return 'completed';
+  if (lower === 'abandoned' || lower === 'archived') return 'abandoned';
+  if (lower === 'backlog' || lower === 'ready' || lower === 'paused') return 'backlog';
+  if (lower === 'active' || lower === 'in_progress' || lower === 'in-progress') return 'active';
+  return 'backlog';
 }
