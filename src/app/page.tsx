@@ -397,11 +397,11 @@ export default function KanbanPage() {
               }}
             >
               {/* Column Header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-inherit">
-                <h2 className={`font-semibold ${getFontSizeClass('text-sm')} uppercase tracking-wider ${colors.header}`}>
+              <div className="flex items-center justify-between px-4 py-3 border-b border-inherit gap-2">
+                <h2 className={`font-semibold ${getFontSizeClass('text-sm')} uppercase tracking-wider ${colors.header} overflow-x-auto whitespace-nowrap scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent flex-1 min-w-0`}>
                   {label}
                 </h2>
-                <span className={`${getFontSizeClass('text-xs')} font-bold px-2 py-0.5 rounded-full ${colors.count}`}>
+                <span className={`${getFontSizeClass('text-xs')} font-bold px-2 py-0.5 rounded-full ${colors.count} shrink-0`}>
                   {colProjects.length}
                 </span>
               </div>

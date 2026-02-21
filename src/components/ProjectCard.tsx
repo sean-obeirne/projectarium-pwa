@@ -1,5 +1,6 @@
 import { Project } from '@/types';
 import { languageColors, defaultLanguageColor, dragColors, cardColors } from '@/lib/theme';
+import { useRef, useState } from 'react';
 
 interface ProjectCardProps {
   project: Project;
@@ -13,6 +14,7 @@ interface ProjectCardProps {
   onEdit: () => void;
   fontSizeLevel: number;
   getFontSizeClass: (baseClass: string) => string;
+  touchDragDelay?: number; // Delay in ms before drag starts on touch devices (default: 200)
 }
 
 export default function ProjectCard({
@@ -27,13 +29,68 @@ export default function ProjectCard({
   onEdit,
   fontSizeLevel,
   getFontSizeClass,
+  touchDragDelay = 100, // Default 200ms delay for mobile
 }: ProjectCardProps) {
   const langKey = project.language?.toLowerCase().split(',')[0]?.trim() || '';
   const langClass = languageColors[langKey] || defaultLanguageColor;
 
+  const touchTimer = useRef<NodeJS.Timeout | null>(null);
+  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+  const [isDragReady, setIsDragReady] = useState(false);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+
+    // Clear any existing timer
+    if (touchTimer.current) {
+      clearTimeout(touchTimer.current);
+    }
+
+    // Start a timer for the drag delay
+    touchTimer.current = setTimeout(() => {
+      setIsDragReady(true);
+      // Optionally add haptic feedback if available
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+    }, touchDragDelay);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartPos.current) return;
+
+    const touch = e.touches[0];
+    const moveThreshold = 10; // pixels
+    const dx = Math.abs(touch.clientX - touchStartPos.current.x);
+    const dy = Math.abs(touch.clientY - touchStartPos.current.y);
+
+    // If moved too much before delay completed, cancel drag
+    if ((dx > moveThreshold || dy > moveThreshold) && !isDragReady) {
+      if (touchTimer.current) {
+        clearTimeout(touchTimer.current);
+        touchTimer.current = null;
+      }
+      touchStartPos.current = null;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (touchTimer.current) {
+      clearTimeout(touchTimer.current);
+      touchTimer.current = null;
+    }
+    touchStartPos.current = null;
+    setIsDragReady(false);
+  };
+
   return (
     <div
       draggable
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
       onDragStart={(e) => {
         e.dataTransfer.setData('text/plain', project.id.toString());
         e.dataTransfer.effectAllowed = 'move';
@@ -63,38 +120,14 @@ export default function ProjectCard({
         ${cardColors.shadow}
         hover:-translate-y-0.5
         transition-all duration-150 select-none
-        ${isDragging ? dragColors.draggingCard : ''}`}
+        ${isDragging ? dragColors.draggingCard : ''}
+        ${isDragReady ? 'ring-2 ring-blue-400 ring-opacity-50' : ''}`}
     >
       {/* Card header */}
-      <div className="flex items-start justify-between gap-2 mb-1.5">
-        <h3 className={`font-semibold ${getFontSizeClass('text-sm')} text-gray-900 dark:text-white leading-snug group-hover:text-pink-500 dark:group-hover:text-pink-400 transition-colors`}>
+      <div className="mb-1.5">
+        <h3 className={`font-semibold ${getFontSizeClass('text-sm')} text-gray-900 dark:text-white leading-snug group-hover:text-pink-500 dark:group-hover:text-pink-400 transition-colors overflow-x-auto whitespace-nowrap scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent`}>
           {project.name}
         </h3>
-
-        {/* Actions - visible on hover */}
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-          onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={onEdit}
-            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-blue-500"
-            title="Edit"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-          </button>
-          <button
-            onClick={onDelete}
-            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-red-500"
-            title="Delete"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
-        </div>
       </div>
 
       {/* Description */}
