@@ -77,6 +77,8 @@ export const modalColors = {
     background: 'bg-gray-800',
     border: 'border-gray-700',
     borderLight: 'border-gray-700/50',
+    borderGrayDark: 'border-gray-500', // for toggle button border when hidden
+    toggleButtonGray: 'rgba(128,128,128,0.45)', // for toggle button overlay when hidden
     titleText: 'text-white',
     subtitleText: 'text-gray-400',
     closeButton: 'text-gray-400 hover:text-gray-300',

@@ -12,6 +12,8 @@ interface ProjectModalProps {
     onAddTodo: (description: string) => Promise<void>;
     onToggleTodo: (todo: Todo) => Promise<void>;
     onDeleteTodo: (todo: Todo) => Promise<void>;
+    fontSizeLevel: number;
+    getFontSizeClass: (baseClass: string) => string;
 }
 
 export default function ProjectModal({
@@ -23,6 +25,8 @@ export default function ProjectModal({
     onAddTodo,
     onToggleTodo,
     onDeleteTodo,
+    fontSizeLevel,
+    getFontSizeClass,
 }: ProjectModalProps) {
     const [newTodoText, setNewTodoText] = useState('');
     const [addingTodo, setAddingTodo] = useState(false);
@@ -52,11 +56,11 @@ export default function ProjectModal({
                 {/* Header */}
                 <div className="flex items-start justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
                     <div className="flex-1 min-w-0 mr-4">
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white truncate">
+                        <h2 className={getFontSizeClass('text-lg') + " font-bold text-gray-900 dark:text-white truncate"}>
                             {project.name}
                         </h2>
                         {project.description && (
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                            <p className={typeof getFontSizeClass === 'function' ? getFontSizeClass('text-sm') + " text-gray-500 dark:text-gray-400 mt-0.5" : "text-sm text-gray-500 dark:text-gray-400 mt-0.5"}>
                                 {project.description}
                             </p>
                         )}
@@ -95,22 +99,22 @@ export default function ProjectModal({
 
                 {/* Project Info */}
                 <div className="px-6 py-3 border-b border-gray-100 dark:border-gray-700/50 shrink-0">
-                    <div className="flex flex-wrap gap-2 text-xs">
+                    <div className={getFontSizeClass('text-xs') + " flex flex-wrap gap-2"}>
                         {project.language && (
-                            <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-medium">
+                            <span className={getFontSizeClass('text-xs') + " px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-medium"}>
                                 {project.language}
                             </span>
                         )}
-                        <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-                            Status: <span className="font-medium capitalize">{project.status}</span>
+                        <span className={getFontSizeClass('text-xs') + " px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"}>
+                            Status: <span className={getFontSizeClass('text-xs') + " font-medium capitalize"}>{project.status}</span>
                         </span>
                         {project.priority > 0 && (
-                            <span className="px-2 py-1 rounded bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300">
+                            <span className={getFontSizeClass('text-xs') + " px-2 py-1 rounded bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300"}>
                                 Priority: {project.priority}
                             </span>
                         )}
                         {project.path && (
-                            <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-mono truncate max-w-xs">
+                            <span className={getFontSizeClass('text-xs') + " px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-mono truncate max-w-xs"}>
                                 {project.path}
                             </span>
                         )}

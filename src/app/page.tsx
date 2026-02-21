@@ -23,7 +23,16 @@ export default function KanbanPage() {
   const [todos, setTodos] = useState<Record<number, Todo[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [fontSize, setFontSize] = useState(16);
+  // Font size slider (4 levels)
+  const fontSizeLevels = ['text-xs', 'text-sm', 'text-base', 'text-lg'];
+  const [fontSizeLevel, setFontSizeLevel] = useState(2); // Default: base
+
+  // Helper to get relative font size class
+  const getFontSizeClass = (baseClass: string) => {
+    const idx = fontSizeLevels.indexOf(baseClass);
+    const newIdx = Math.min(fontSizeLevels.length - 1, Math.max(0, idx + fontSizeLevel - 2));
+    return fontSizeLevels[newIdx] || baseClass;
+  };
 
   // Drag state – draggedId is only for visual styling; actual ID is read from dataTransfer in drop handlers
   const [draggedId, setDraggedId] = useState<number | null>(null);
@@ -40,6 +49,17 @@ export default function KanbanPage() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+
+  // Column visibility state
+  const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    KANBAN_COLUMNS.forEach(({ key }) => { initial[key] = true; });
+    return initial;
+  });
+
+  const toggleColumn = (key: string) => {
+    setVisibleColumns(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const loadData = useCallback(async () => {
     try {
@@ -273,29 +293,69 @@ export default function KanbanPage() {
   }
 
   return (
-    <div style={{ fontSize: `${fontSize}px` }}>
+    <div className={getFontSizeClass('text-base')}>
       {/* Header */}
       <div className="flex mb-6 px-4 items-center">
-        <div className="flex-1">
-          <p className={`text-lg font-bold ${pageColors.headerSubtitle} mt-1`}>
+        <div className="flex-1 flex items-center">
+          <p className={`${getFontSizeClass('text-lg')} font-bold ${pageColors.headerSubtitle} mt-1`}>
             {projects.length} projects
           </p>
+          {/* Column Toggle Buttons */}
+          <div className="flex gap-2 ml-4">
+            {KANBAN_COLUMNS.map(({ key }, idx) => {
+              const borderGray = !visibleColumns[key] ? modalColors.borderGrayDark : kanbanColors[key].border;
+              return (
+                <button
+                  key={key}
+                  title={`Toggle ${key}`}
+                  onClick={() => toggleColumn(key)}
+                  className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-150 focus:outline-none ${kanbanColors[key].bg} ${borderGray} ${kanbanColors[key].header}`}
+                  style={{
+                    boxShadow: visibleColumns[key] ? `0 0 0 2px ${kanbanColors[key].border.split(' ')[1] || '#000'}` : 'none',
+                    position: 'relative',
+                  }}
+                >
+                  {/* Icon: eye open/closed */}
+                  {visibleColumns[key] ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm7 0c-1.5 4-6 7-10 7S3.5 16 2 12c1.5-4 6-7 10-7s8.5 3 10 7z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3l18 18M9.88 9.88A3 3 0 0012 15a3 3 0 002.12-5.12M21 12c-1.5 4-6 7-10 7a9.77 9.77 0 01-7.17-3.06M6.53 6.53A9.77 9.77 0 0112 5c4 0 8.5 3 10 7a9.77 9.77 0 01-1.06 2.11" />
+                    </svg>
+                  )}
+                  {!visibleColumns[key] && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        borderRadius: '9999px',
+                        background: modalColors.toggleButtonGray,
+                        pointerEvents: 'none',
+                      }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
         <div className="flex items-center gap-4 ml-auto">
           {/* Text Size Slider */}
           <div className="flex items-center gap-2">
-            <label htmlFor="font-size-slider" className="text-sm font-bold">Text Size</label>
+            <label htmlFor="font-size-slider" className={getFontSizeClass('text-sm') + ' font-bold'}>Text Size</label>
             <input
               id="font-size-slider"
               type="range"
-              min={12}
-              max={32}
-              value={fontSize}
-              onChange={e => setFontSize(Number(e.target.value))}
+              min={0}
+              max={3}
+              value={fontSizeLevel}
+              onChange={e => setFontSizeLevel(Number(e.target.value))}
               className={`w-32 ${pageColors.sliderAccent}`}
               style={{ accentColor: pageColors.sliderAccent }}
             />
-            <span className="text-xs">{fontSize}px</span>
+            <span className={getFontSizeClass('text-xs')}>{['XS', 'SM', 'MD', 'LG'][fontSizeLevel]}</span>
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
@@ -304,14 +364,13 @@ export default function KanbanPage() {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            New Project
           </button>
         </div>
       </div>
 
       {/* Kanban Board */}
-      <div className="grid grid-cols-4 gap-4 px-4 h-[calc(100vh-12rem)] min-h-0">
-        {KANBAN_COLUMNS.map(({ key, label }) => {
+      <div className={`grid gap-4 px-4 h-[calc(100vh-12rem)] min-h-0`} style={{ gridTemplateColumns: `repeat(${KANBAN_COLUMNS.filter(({ key }) => visibleColumns[key]).length}, minmax(0, 1fr))` }}>
+        {KANBAN_COLUMNS.filter(({ key }) => visibleColumns[key]).map(({ key, label }) => {
           const colProjects = getColumnProjects(key);
           const colors = kanbanColors[key];
           const isDropTarget = dragOver?.column === key;
@@ -343,10 +402,10 @@ export default function KanbanPage() {
             >
               {/* Column Header */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-inherit">
-                <h2 className={`font-semibold text-sm uppercase tracking-wider ${colors.header}`}>
+                <h2 className={`font-semibold ${getFontSizeClass('text-sm')} uppercase tracking-wider ${colors.header}`}>
                   {label}
                 </h2>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${colors.count}`}>
+                <span className={`${getFontSizeClass('text-xs')} font-bold px-2 py-0.5 rounded-full ${colors.count}`}>
                   {colProjects.length}
                 </span>
               </div>
@@ -365,6 +424,8 @@ export default function KanbanPage() {
                         project={project}
                         todoCount={todos[project.id]?.length || 0}
                         isDragging={isDragging}
+                        fontSizeLevel={fontSizeLevel}
+                        getFontSizeClass={getFontSizeClass}
                         onDragStart={() => handleDragStart(project.id)}
                         onDragEnd={handleDragEnd}
                         onDragOver={(e) => handleCardDragOver(e, project.id, key)}
@@ -400,6 +461,8 @@ export default function KanbanPage() {
         <ProjectModal
           project={selectedProject}
           todos={todos[selectedProject.id] || []}
+          fontSizeLevel={fontSizeLevel}
+          getFontSizeClass={getFontSizeClass}
           onClose={() => setSelectedProject(null)}
           onEdit={() => {
             setEditingProject(selectedProject);
@@ -418,7 +481,7 @@ export default function KanbanPage() {
           onClick={(e) => e.target === e.currentTarget && setShowCreateModal(false)}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">New Project</h2>
+              <h2 className={typeof getFontSizeClass === 'function' ? getFontSizeClass('text-xl') + " font-bold text-gray-900 dark:text-white" : "text-xl font-bold text-gray-900 dark:text-white"}>New Project</h2>
               <button onClick={() => setShowCreateModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -427,6 +490,8 @@ export default function KanbanPage() {
             </div>
             <div className="p-6">
               <ProjectForm
+                fontSizeLevel={fontSizeLevel}
+                getFontSizeClass={getFontSizeClass}
                 onSubmit={handleCreate}
                 onCancel={() => setShowCreateModal(false)}
               />
@@ -441,7 +506,7 @@ export default function KanbanPage() {
           onClick={(e) => e.target === e.currentTarget && setEditingProject(null)}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Edit Project</h2>
+              <h2 className={getFontSizeClass('text-xl') + " font-bold text-gray-900 dark:text-white"}>Edit Project</h2>
               <button onClick={() => setEditingProject(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -451,6 +516,8 @@ export default function KanbanPage() {
             <div className="p-6">
               <ProjectForm
                 project={editingProject}
+                fontSizeLevel={fontSizeLevel}
+                getFontSizeClass={getFontSizeClass}
                 onSubmit={handleUpdate}
                 onCancel={() => setEditingProject(null)}
               />

@@ -11,6 +11,8 @@ interface ProjectCardProps {
   onClick: () => void;
   onDelete: () => void;
   onEdit: () => void;
+  fontSizeLevel: number;
+  getFontSizeClass: (baseClass: string) => string;
 }
 
 export default function ProjectCard({
@@ -23,6 +25,8 @@ export default function ProjectCard({
   onClick,
   onDelete,
   onEdit,
+  fontSizeLevel,
+  getFontSizeClass,
 }: ProjectCardProps) {
   const langKey = project.language?.toLowerCase().split(',')[0]?.trim() || '';
   const langClass = languageColors[langKey] || defaultLanguageColor;
@@ -63,8 +67,7 @@ export default function ProjectCard({
     >
       {/* Card header */}
       <div className="flex items-start justify-between gap-2 mb-1.5">
-        <h3 className="font-semibold text-sm text-gray-900 dark:text-white leading-snug
-          group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+        <h3 className={`font-semibold ${getFontSizeClass('text-sm')} text-gray-900 dark:text-white leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors`}>
           {project.name}
         </h3>
 
@@ -96,7 +99,7 @@ export default function ProjectCard({
 
       {/* Description */}
       {project.description && (
-        <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-2">
+        <p className={`${getFontSizeClass('text-xs')} text-gray-500 dark:text-gray-400 line-clamp-2 mb-2`}>
           {project.description}
         </p>
       )}
@@ -104,19 +107,19 @@ export default function ProjectCard({
       {/* Footer tags */}
       <div className="flex items-center gap-1.5 flex-wrap">
         {project.language && (
-          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${langClass}`}>
+          <span className={`${getFontSizeClass('text-[10px]')} font-medium px-1.5 py-0.5 rounded ${langClass}`}>
             {project.language}
           </span>
         )}
 
         {project.priority > 0 && (
-          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300">
+          <span className={`${getFontSizeClass('text-[10px]')} font-medium px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300`}>
             P{project.priority}
           </span>
         )}
 
         {todoCount > 0 && (
-          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">
+          <span className={`${getFontSizeClass('text-[10px]')} font-medium px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300`}>
             {todoCount} todo{todoCount !== 1 ? 's' : ''}
           </span>
         )}
