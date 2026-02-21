@@ -7,6 +7,7 @@ export interface Project {
   priority: number;
   status: string;
   language: string;
+  position: number;
 }
 
 export interface Todo {

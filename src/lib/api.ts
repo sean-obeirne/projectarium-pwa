@@ -81,6 +81,15 @@ export async function updateProjectPriority(
   });
 }
 
+export async function reorderProjects(
+  order: Record<string, number[]>
+): Promise<Project[]> {
+  return fetchApi<Project[]>('/projects/reorder', {
+    method: 'PUT',
+    body: JSON.stringify({ order }),
+  });
+}
+
 // ── Todo endpoints ──
 
 export async function getTodos(projectId?: number): Promise<Todo[]> {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, Fragment } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { Project, Todo, KANBAN_COLUMNS, KanbanStatus, normalizeStatus } from '@/types';
 import { kanbanColors, dragColors, pageColors, buttonColors, modalColors } from '@/lib/theme';
 import {
@@ -13,14 +13,13 @@ import {
   createTodo,
   updateTodo,
   deleteTodo,
+  reorderProjects,
 } from '@/lib/api';
 import ProjectCard from '@/components/ProjectCard';
 import ProjectModal from '@/components/ProjectModal';
 import ProjectForm from '@/components/ProjectForm';
 
 export default function KanbanPage() {
-  // Column order state: array of project IDs for each column
-  const [columnOrder, setColumnOrder] = useState<Record<string, number[]>>({});
   const [projects, setProjects] = useState<Project[]>([]);
   const [todos, setTodos] = useState<Record<number, Todo[]>>({});
   const [loading, setLoading] = useState(true);
@@ -68,22 +67,6 @@ export default function KanbanPage() {
       const projectsData = await getProjects();
       setProjects(projectsData || []);
 
-      // Initialize column order from localStorage or backend
-      const storedOrder = localStorage.getItem('kanbanColumnOrder');
-      let initialOrder: Record<string, number[]> = {};
-      if (storedOrder) {
-        try {
-          initialOrder = JSON.parse(storedOrder);
-        } catch { }
-      } else {
-        KANBAN_COLUMNS.forEach(({ key }) => {
-          initialOrder[key] = (projectsData || [])
-            .filter(p => normalizeStatus(p.status) === key)
-            .map(p => p.id);
-        });
-      }
-      setColumnOrder(initialOrder);
-
       // Load todos for all projects
       const todoMap: Record<number, Todo[]> = {};
       await Promise.all(
@@ -129,44 +112,57 @@ export default function KanbanPage() {
   };
 
   // Single drop handler – handles both card-level (insert before/after) and column-level (append) drops
-  const handleDrop = (column: KanbanStatus, draggedId: number) => {
-    // Update columnOrder for drag-and-drop
-    setColumnOrder(prev => {
-      const next = { ...prev };
-      // Remove from all columns
-      Object.keys(next).forEach(col => {
-        next[col] = (next[col] || []).filter(x => x !== draggedId);
-      });
-      // Insert into target column at correct position
-      const targetArr = [...(next[column] || [])];
-      const snap = dragOver;
-      let insertAt = targetArr.length;
-      if (snap && snap.column === column && snap.cardId !== null) {
-        const idx = targetArr.indexOf(snap.cardId);
-        insertAt = idx < 0 ? targetArr.length : (snap.position === 'before' ? idx : idx + 1);
-      }
-      targetArr.splice(insertAt, 0, draggedId);
-      next[column] = targetArr;
-      // Persist order to localStorage
-      localStorage.setItem('kanbanColumnOrder', JSON.stringify(next));
-      return next;
-    });
+  const handleDrop = async (column: KanbanStatus, draggedId: number) => {
     const id = draggedId;
     if (!id) { setDragOver(null); return; }
     const sourceProject = projects.find(p => p.id === id);
     if (!sourceProject) { setDraggedId(null); setDragOver(null); return; }
 
-    const sourceColumn = normalizeStatus(sourceProject.status);
+    // Build new order for all columns
+    const newOrder: Record<string, number[]> = {};
+    KANBAN_COLUMNS.forEach(({ key }) => {
+      // Get current projects in this column, sorted by position
+      const colProjects = projects
+        .filter(p => normalizeStatus(p.status) === key && p.id !== id)
+        .sort((a, b) => a.position - b.position)
+        .map(p => p.id);
+      newOrder[key] = colProjects;
+    });
 
-
-    if (sourceColumn !== column) {
-      const optimistic = { ...sourceProject, status: column };
-      setProjects(prev => prev.map(p => p.id === id ? optimistic : p));
-      updateProjectStatus(id, column)
+    // Insert dragged project into target column at correct position
+    const targetArr = newOrder[column];
+    const snap = dragOver;
+    let insertAt = targetArr.length;
+    if (snap && snap.column === column && snap.cardId !== null) {
+      const idx = targetArr.indexOf(snap.cardId);
+      insertAt = idx < 0 ? targetArr.length : (snap.position === 'before' ? idx : idx + 1);
     }
+    targetArr.splice(insertAt, 0, id);
+
+    // Optimistic update - update local state immediately
+    const updatedProjects = projects.map(p => {
+      for (const [status, ids] of Object.entries(newOrder)) {
+        const pos = ids.indexOf(p.id);
+        if (pos !== -1) {
+          return { ...p, status, position: pos };
+        }
+      }
+      return p;
+    });
+    setProjects(updatedProjects);
 
     setDraggedId(null);
     setDragOver(null);
+
+    // Persist to server
+    try {
+      const serverProjects = await reorderProjects(newOrder);
+      setProjects(serverProjects);
+    } catch (err) {
+      // Revert on error
+      console.error('Failed to reorder projects:', err);
+      loadData();
+    }
   };
 
   // ── Project CRUD ──
@@ -262,17 +258,10 @@ export default function KanbanPage() {
   // ── Column helpers ──
 
   const getColumnProjects = (column: KanbanStatus): Project[] => {
-    // Use columnOrder for rendering
-    const colProjects = projects.filter(p => normalizeStatus(p.status) === column);
-    const order = columnOrder[column] || [];
-    // Build ordered list: first all IDs in order, then any missing IDs in the order they appear
-    const ordered = [
-      ...order
-        .map(id => colProjects.find(p => p.id === id))
-        .filter(Boolean),
-      ...colProjects.filter(p => !order.includes(p.id))
-    ];
-    return ordered;
+    // Filter projects by status and sort by position (from server)
+    return projects
+      .filter(p => normalizeStatus(p.status) === column)
+      .sort((a, b) => a.position - b.position);
   };
 
   // ── Render ──
