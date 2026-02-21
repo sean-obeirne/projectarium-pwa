@@ -1,11 +1,13 @@
-'use client';
-
 import { Project } from '@/types';
+import { languageColors, defaultLanguageColor, dragColors, cardColors } from '@/lib/theme';
 
 interface ProjectCardProps {
   project: Project;
   todoCount: number;
+  isDragging: boolean;
   onDragStart: () => void;
+  onDragEnd: () => void;
+  onDragOver: (e: React.DragEvent) => void;
   onClick: () => void;
   onDelete: () => void;
   onEdit: () => void;
@@ -14,36 +16,50 @@ interface ProjectCardProps {
 export default function ProjectCard({
   project,
   todoCount,
+  isDragging,
   onDragStart,
+  onDragEnd,
+  onDragOver,
   onClick,
   onDelete,
   onEdit,
 }: ProjectCardProps) {
-  const languageColors: Record<string, string> = {
-    python: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300',
-    go: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/50 dark:text-cyan-300',
-    lua: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300',
-    c: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-    godot: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
-  };
-
   const langKey = project.language?.toLowerCase().split(',')[0]?.trim() || '';
-  const langClass = languageColors[langKey] || 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
+  const langClass = languageColors[langKey] || defaultLanguageColor;
 
   return (
     <div
       draggable
       onDragStart={(e) => {
+        e.dataTransfer.setData('text/plain', project.id.toString());
         e.dataTransfer.effectAllowed = 'move';
+
+        // Create a custom drag ghost with clean styling
+        const dragGhost = (e.currentTarget as HTMLElement).cloneNode(true) as HTMLElement;
+        dragGhost.style.position = 'absolute';
+        dragGhost.style.top = '-9999px';
+        dragGhost.style.left = '-9999px';
+        dragGhost.style.width = (e.currentTarget as HTMLElement).offsetWidth + 'px';
+        dragGhost.style.border = `2px solid ${dragColors.ghostBorder}`;
+        dragGhost.style.borderRadius = '0.5rem';
+        dragGhost.style.transform = 'none';
+        dragGhost.style.backgroundColor = 'black';
+        document.body.appendChild(dragGhost);
+        e.dataTransfer.setDragImage(dragGhost, e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+        setTimeout(() => document.body.removeChild(dragGhost), 0);
+
         onDragStart();
       }}
+      onDragEnd={onDragEnd}
+      onDragOver={(e) => { onDragOver(e); }}
       onClick={onClick}
-      className="group relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700
+      className={`group relative ${cardColors.background} rounded-lg border ${cardColors.border}
         p-3 cursor-grab active:cursor-grabbing
-        hover:border-blue-400 dark:hover:border-blue-500
-        hover:shadow-lg hover:shadow-blue-100/50 dark:hover:shadow-blue-900/20
+        ${cardColors.hoverBorder}
+        ${cardColors.shadow}
         hover:-translate-y-0.5
-        transition-all duration-150 select-none"
+        transition-all duration-150 select-none
+        ${isDragging ? dragColors.draggingCard : ''}`}
     >
       {/* Card header */}
       <div className="flex items-start justify-between gap-2 mb-1.5">

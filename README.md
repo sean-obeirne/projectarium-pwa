@@ -96,7 +96,7 @@ The app connects to a REST API with the following endpoints:
 ```
 src/
 ├── app/                    # Next.js App Router pages
-│   ├── layout.tsx         # Root layout with navbar
+│   ├── layout.tsx         # Root layout
 │   ├── page.tsx           # Projects list page
 │   ├── globals.css        # Global styles
 │   ├── projects/
@@ -104,7 +104,6 @@ src/
 │   │   └── [id]/          # Project detail and edit pages
 │   └── tasks/             # Task pages
 ├── components/            # React components
-│   ├── Navbar.tsx        # Navigation bar
 │   ├── ProjectCard.tsx   # Project card component
 │   ├── ProjectForm.tsx   # Project form
 │   ├── TaskList.tsx      # Task list component
