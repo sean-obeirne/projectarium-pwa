@@ -67,7 +67,7 @@ export default function ProjectCard({
     >
       {/* Card header */}
       <div className="flex items-start justify-between gap-2 mb-1.5">
-        <h3 className={`font-semibold ${getFontSizeClass('text-sm')} text-gray-900 dark:text-white leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors`}>
+        <h3 className={`font-semibold ${getFontSizeClass('text-sm')} text-gray-900 dark:text-white leading-snug group-hover:text-pink-500 dark:group-hover:text-pink-400 transition-colors`}>
           {project.name}
         </h3>
 

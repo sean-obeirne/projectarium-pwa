@@ -19,6 +19,8 @@ import ProjectModal from '@/components/ProjectModal';
 import ProjectForm from '@/components/ProjectForm';
 
 export default function KanbanPage() {
+  // Column order state: array of project IDs for each column
+  const [columnOrder, setColumnOrder] = useState<Record<string, number[]>>({});
   const [projects, setProjects] = useState<Project[]>([]);
   const [todos, setTodos] = useState<Record<number, Todo[]>>({});
   const [loading, setLoading] = useState(true);
@@ -42,8 +44,6 @@ export default function KanbanPage() {
     position: 'before' | 'after';
   } | null>(null);
 
-  // Client-side column ordering (array of project IDs)
-  const [colOrder, setColOrder] = useState<Record<string, number[]>>({});
 
   // Modal state
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -61,22 +61,28 @@ export default function KanbanPage() {
     setVisibleColumns(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const loadData = useCallback(async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
       const projectsData = await getProjects();
       setProjects(projectsData || []);
 
-      // Initialize column ordering from API data
-      const initialOrder: Record<string, number[]> = {};
-      KANBAN_COLUMNS.forEach(({ key }) => {
-        initialOrder[key] = (projectsData || [])
-          .filter(p => normalizeStatus(p.status) === key)
-          .sort((a, b) => b.priority - a.priority)
-          .map(p => p.id);
-      });
-      setColOrder(initialOrder);
+      // Initialize column order from localStorage or backend
+      const storedOrder = localStorage.getItem('kanbanColumnOrder');
+      let initialOrder: Record<string, number[]> = {};
+      if (storedOrder) {
+        try {
+          initialOrder = JSON.parse(storedOrder);
+        } catch { }
+      } else {
+        KANBAN_COLUMNS.forEach(({ key }) => {
+          initialOrder[key] = (projectsData || [])
+            .filter(p => normalizeStatus(p.status) === key)
+            .map(p => p.id);
+        });
+      }
+      setColumnOrder(initialOrder);
 
       // Load todos for all projects
       const todoMap: Record<number, Todo[]> = {};
@@ -96,11 +102,11 @@ export default function KanbanPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+  }, []);
 
   // ── Drag and Drop ──
 
@@ -124,6 +130,27 @@ export default function KanbanPage() {
 
   // Single drop handler – handles both card-level (insert before/after) and column-level (append) drops
   const handleDrop = (column: KanbanStatus, draggedId: number) => {
+    // Update columnOrder for drag-and-drop
+    setColumnOrder(prev => {
+      const next = { ...prev };
+      // Remove from all columns
+      Object.keys(next).forEach(col => {
+        next[col] = (next[col] || []).filter(x => x !== draggedId);
+      });
+      // Insert into target column at correct position
+      const targetArr = [...(next[column] || [])];
+      const snap = dragOver;
+      let insertAt = targetArr.length;
+      if (snap && snap.column === column && snap.cardId !== null) {
+        const idx = targetArr.indexOf(snap.cardId);
+        insertAt = idx < 0 ? targetArr.length : (snap.position === 'before' ? idx : idx + 1);
+      }
+      targetArr.splice(insertAt, 0, draggedId);
+      next[column] = targetArr;
+      // Persist order to localStorage
+      localStorage.setItem('kanbanColumnOrder', JSON.stringify(next));
+      return next;
+    });
     const id = draggedId;
     if (!id) { setDragOver(null); return; }
     const sourceProject = projects.find(p => p.id === id);
@@ -131,31 +158,11 @@ export default function KanbanPage() {
 
     const sourceColumn = normalizeStatus(sourceProject.status);
 
-    setColOrder(prev => {
-      const next = { ...prev };
-      next[sourceColumn] = (next[sourceColumn] || []).filter(x => x !== id);
-      const targetArr = [...(next[column] || []).filter(x => x !== id)];
-
-      // If dragOver points at a specific card in this column, insert relative to it
-      const snap = dragOver;
-      if (snap && snap.column === column && snap.cardId !== null) {
-        const idx = targetArr.indexOf(snap.cardId);
-        const insertAt = idx < 0 ? targetArr.length : (snap.position === 'before' ? idx : idx + 1);
-        targetArr.splice(insertAt, 0, id);
-      } else {
-        targetArr.push(id);
-      }
-
-      next[column] = targetArr;
-      return next;
-    });
 
     if (sourceColumn !== column) {
       const optimistic = { ...sourceProject, status: column };
       setProjects(prev => prev.map(p => p.id === id ? optimistic : p));
-      updateProjectStatus(id, column).catch(() => {
-        setProjects(prev => prev.map(p => p.id === id ? sourceProject : p));
-      });
+      updateProjectStatus(id, column)
     }
 
     setDraggedId(null);
@@ -255,17 +262,17 @@ export default function KanbanPage() {
   // ── Column helpers ──
 
   const getColumnProjects = (column: KanbanStatus): Project[] => {
+    // Use columnOrder for rendering
     const colProjects = projects.filter(p => normalizeStatus(p.status) === column);
-    const order = colOrder[column];
-    if (!order || order.length === 0) {
-      return [...colProjects].sort((a, b) => b.priority - a.priority);
-    }
-    const indexMap = new Map(order.map((id, i) => [id, i]));
-    return [...colProjects].sort((a, b) => {
-      const ai = indexMap.has(a.id) ? indexMap.get(a.id)! : 999;
-      const bi = indexMap.has(b.id) ? indexMap.get(b.id)! : 999;
-      return ai - bi;
-    });
+    const order = columnOrder[column] || [];
+    // Build ordered list: first all IDs in order, then any missing IDs in the order they appear
+    const ordered = [
+      ...order
+        .map(id => colProjects.find(p => p.id === id))
+        .filter(Boolean),
+      ...colProjects.filter(p => !order.includes(p.id))
+    ];
+    return ordered;
   };
 
   // ── Render ──
@@ -297,11 +304,8 @@ export default function KanbanPage() {
       {/* Header */}
       <div className="flex mb-6 px-4 items-center">
         <div className="flex-1 flex items-center">
-          <p className={`${getFontSizeClass('text-lg')} font-bold ${pageColors.headerSubtitle} mt-1`}>
-            {projects.length} projects
-          </p>
-          {/* Column Toggle Buttons */}
-          <div className="flex gap-2 ml-4">
+          {/* Column Toggle Buttons - always visible, aligned left */}
+          <div className="flex gap-2">
             {KANBAN_COLUMNS.map(({ key }, idx) => {
               const borderGray = !visibleColumns[key] ? modalColors.borderGrayDark : kanbanColors[key].border;
               return (
@@ -309,7 +313,7 @@ export default function KanbanPage() {
                   key={key}
                   title={`Toggle ${key}`}
                   onClick={() => toggleColumn(key)}
-                  className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-150 focus:outline-none ${kanbanColors[key].bg} ${borderGray} ${kanbanColors[key].header}`}
+                  className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 flex items-center justify-center transition-all duration-150 focus:outline-none ${kanbanColors[key].bg} ${borderGray} ${kanbanColors[key].header}`}
                   style={{
                     boxShadow: visibleColumns[key] ? `0 0 0 2px ${kanbanColors[key].border.split(' ')[1] || '#000'}` : 'none',
                     position: 'relative',
@@ -317,11 +321,11 @@ export default function KanbanPage() {
                 >
                   {/* Icon: eye open/closed */}
                   {visibleColumns[key] ? (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm7 0c-1.5 4-6 7-10 7S3.5 16 2 12c1.5-4 6-7 10-7s8.5 3 10 7z" />
                     </svg>
                   ) : (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3l18 18M9.88 9.88A3 3 0 0012 15a3 3 0 002.12-5.12M21 12c-1.5 4-6 7-10 7a9.77 9.77 0 01-7.17-3.06M6.53 6.53A9.77 9.77 0 0112 5c4 0 8.5 3 10 7a9.77 9.77 0 01-1.06 2.11" />
                     </svg>
                   )}
@@ -340,11 +344,14 @@ export default function KanbanPage() {
               );
             })}
           </div>
+          <p className={`${getFontSizeClass('text-lg')} font-bold ${pageColors.headerSubtitle} mt-1 hidden sm:block ml-4 text-center w-full`}>
+            {projects.length} projects
+          </p>
         </div>
         <div className="flex items-center gap-4 ml-auto">
           {/* Text Size Slider */}
           <div className="flex items-center gap-2">
-            <label htmlFor="font-size-slider" className={getFontSizeClass('text-sm') + ' font-bold'}>Text Size</label>
+            <label htmlFor="font-size-slider" className={getFontSizeClass('text-sm') + ' font-bold'}>SM</label>
             <input
               id="font-size-slider"
               type="range"
@@ -352,7 +359,7 @@ export default function KanbanPage() {
               max={3}
               value={fontSizeLevel}
               onChange={e => setFontSizeLevel(Number(e.target.value))}
-              className={`w-32 ${pageColors.sliderAccent}`}
+              className={`w-16 sm:w-32 ${pageColors.sliderAccent}`}
               style={{ accentColor: pageColors.sliderAccent }}
             />
             <span className={getFontSizeClass('text-xs')}>{['XS', 'SM', 'MD', 'LG'][fontSizeLevel]}</span>
