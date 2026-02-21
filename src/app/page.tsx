@@ -49,6 +49,9 @@ export default function KanbanPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
 
+  // View mode: 'vertical' (kanban columns) or 'horizontal' (project rows)
+  const [viewMode, setViewMode] = useState<'vertical' | 'horizontal'>('vertical');
+
   // Column visibility state
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
@@ -293,7 +296,23 @@ export default function KanbanPage() {
       {/* Header */}
       <div className="flex mb-6 px-4 items-center">
         <div className="flex-1 flex items-center">
-          {/* Column Toggle Buttons - always visible, aligned left */}
+          {/* View Mode Toggle Button */}
+          <button
+            onClick={() => setViewMode(prev => prev === 'vertical' ? 'horizontal' : 'vertical')}
+            title={viewMode === 'vertical' ? 'Switch to horizontal view' : 'Switch to vertical view'}
+            className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center transition-all duration-150 focus:outline-none mr-3 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+          >
+            {viewMode === 'vertical' ? (
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+              </svg>
+            )}
+          </button>
+          {/* Column/Row Toggle Buttons - visible in both modes */}
           <div className="flex gap-2">
             {KANBAN_COLUMNS.map(({ key }, idx) => {
               const borderGray = !visibleColumns[key] ? modalColors.borderGrayDark : kanbanColors[key].border;
@@ -364,93 +383,196 @@ export default function KanbanPage() {
         </div>
       </div>
 
-      {/* Kanban Board */}
-      <div className={`grid gap-4 px-4 h-[calc(100vh-12rem)] min-h-0`} style={{ gridTemplateColumns: `repeat(${KANBAN_COLUMNS.filter(({ key }) => visibleColumns[key]).length}, minmax(0, 1fr))` }}>
-        {KANBAN_COLUMNS.filter(({ key }) => visibleColumns[key]).map(({ key, label }) => {
-          const colProjects = getColumnProjects(key);
-          const colors = kanbanColors[key];
-          const isDropTarget = dragOver?.column === key;
+      {/* Kanban Board - Vertical View */}
+      {viewMode === 'vertical' && (
+        <div className={`grid gap-4 px-4 h-[calc(100vh-12rem)] min-h-0`} style={{ gridTemplateColumns: `repeat(${KANBAN_COLUMNS.filter(({ key }) => visibleColumns[key]).length}, minmax(0, 1fr))` }}>
+          {KANBAN_COLUMNS.filter(({ key }) => visibleColumns[key]).map(({ key, label }) => {
+            const colProjects = getColumnProjects(key);
+            const colors = kanbanColors[key];
+            const isDropTarget = dragOver?.column === key;
 
-          return (
-            <div
-              key={key}
-              className={`flex flex-col rounded-xl border-2 transition-all duration-200 ${isDropTarget
-                ? `${colors.dropzone} border-dashed scale-[1.01]`
-                : `${colors.bg} ${colors.border}`
-                }`}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragOver(prev => {
-                  if (prev?.column === key && prev?.cardId !== null) return prev;
-                  return { column: key, cardId: null, position: 'after' };
-                });
-              }}
-              onDragLeave={(e) => {
-                // Only clear when truly leaving the column (not moving to a child)
-                if ((e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) return;
-                setDragOver(null);
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                const id = parseInt(e.dataTransfer.getData('text/plain'));
-                if (!isNaN(id)) handleDrop(key, id);
-              }}
-            >
-              {/* Column Header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-inherit gap-2">
-                <h2 className={`font-semibold ${getFontSizeClass('text-sm')} uppercase tracking-wider ${colors.header} overflow-x-auto whitespace-nowrap scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent flex-1 min-w-0`}>
-                  {label}
-                </h2>
-                <span className={`${getFontSizeClass('text-xs')} font-bold px-2 py-0.5 rounded-full ${colors.count} shrink-0`}>
-                  {colProjects.length}
-                </span>
+            return (
+              <div
+                key={key}
+                className={`flex flex-col rounded-xl border-2 transition-all duration-200 ${isDropTarget
+                  ? `${colors.dropzone} border-dashed scale-[1.01]`
+                  : `${colors.bg} ${colors.border}`
+                  }`}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver(prev => {
+                    if (prev?.column === key && prev?.cardId !== null) return prev;
+                    return { column: key, cardId: null, position: 'after' };
+                  });
+                }}
+                onDragLeave={(e) => {
+                  // Only clear when truly leaving the column (not moving to a child)
+                  if ((e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) return;
+                  setDragOver(null);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const id = parseInt(e.dataTransfer.getData('text/plain'));
+                  if (!isNaN(id)) handleDrop(key, id);
+                }}
+              >
+                {/* Column Header */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-inherit gap-2">
+                  <h2 className={`font-semibold ${getFontSizeClass('text-sm')} uppercase tracking-wider ${colors.header} overflow-x-auto whitespace-nowrap scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent flex-1 min-w-0`}>
+                    {label}
+                  </h2>
+                  <span className={`${getFontSizeClass('text-xs')} font-bold px-2 py-0.5 rounded-full ${colors.count} shrink-0`}>
+                    {colProjects.length}
+                  </span>
+                </div>
+
+                {/* Cards */}
+                <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
+                  {colProjects.map((project) => {
+                    const isTarget = dragOver?.column === key && dragOver?.cardId === project.id;
+                    const isDragging = draggedId === project.id;
+                    return (
+                      <Fragment key={project.id}>
+                        {isTarget && dragOver!.position === 'before' && (
+                          <div className={`h-0.5 ${dragColors.dropIndicator} rounded-full shadow-sm shadow-blue-400`} />
+                        )}
+                        <ProjectCard
+                          project={project}
+                          todoCount={todos[project.id]?.length || 0}
+                          isDragging={isDragging}
+                          fontSizeLevel={fontSizeLevel}
+                          getFontSizeClass={getFontSizeClass}
+                          onDragStart={() => handleDragStart(project.id)}
+                          onDragEnd={handleDragEnd}
+                          onDragOver={(e) => handleCardDragOver(e, project.id, key)}
+                          onClick={() => { if (!isDragging) setSelectedProject(project); }}
+                          onDelete={() => handleDelete(project.id)}
+                          onEdit={() => setEditingProject(project)}
+                        />
+                        {isTarget && dragOver!.position === 'after' && (
+                          <div className={`h-0.5 ${dragColors.dropIndicator} rounded-full shadow-sm shadow-blue-400`} />
+                        )}
+                      </Fragment>
+                    );
+                  })}
+
+                  {colProjects.length === 0 && (
+                    <div className={`flex items-center justify-center h-24 ${pageColors.emptyText} text-sm italic`}>
+                      Drop projects here
+                    </div>
+                  )}
+
+                  {/* End-of-column drop indicator */}
+                  {isDropTarget && dragOver?.cardId === null && colProjects.length > 0 && (
+                    <div className={`h-0.5 ${dragColors.dropIndicator} rounded-full shadow-sm shadow-blue-400`} />
+                  )}
+                </div>
               </div>
+            );
+          })}
+        </div>
+      )}
 
-              {/* Cards */}
-              <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
-                {colProjects.map((project) => {
-                  const isTarget = dragOver?.column === key && dragOver?.cardId === project.id;
-                  const isDragging = draggedId === project.id;
-                  return (
-                    <Fragment key={project.id}>
-                      {isTarget && dragOver!.position === 'before' && (
-                        <div className={`h-0.5 ${dragColors.dropIndicator} rounded-full shadow-sm shadow-blue-400`} />
-                      )}
-                      <ProjectCard
-                        project={project}
-                        todoCount={todos[project.id]?.length || 0}
-                        isDragging={isDragging}
-                        fontSizeLevel={fontSizeLevel}
-                        getFontSizeClass={getFontSizeClass}
-                        onDragStart={() => handleDragStart(project.id)}
-                        onDragEnd={handleDragEnd}
-                        onDragOver={(e) => handleCardDragOver(e, project.id, key)}
-                        onClick={() => { if (!isDragging) setSelectedProject(project); }}
-                        onDelete={() => handleDelete(project.id)}
-                        onEdit={() => setEditingProject(project)}
-                      />
-                      {isTarget && dragOver!.position === 'after' && (
-                        <div className={`h-0.5 ${dragColors.dropIndicator} rounded-full shadow-sm shadow-blue-400`} />
-                      )}
-                    </Fragment>
-                  );
-                })}
+      {/* Horizontal View - Project Rows */}
+      {viewMode === 'horizontal' && (
+        <div className="px-4 overflow-y-auto h-[calc(100vh-12rem)] space-y-4">
+          {KANBAN_COLUMNS.filter(({ key }) => visibleColumns[key]).map(({ key, label }) => {
+            const colProjects = getColumnProjects(key);
+            const colors = kanbanColors[key];
+            const isDropTarget = dragOver?.column === key;
+            if (colProjects.length === 0 && !isDropTarget) return null;
 
-                {colProjects.length === 0 && (
-                  <div className={`flex items-center justify-center h-24 ${pageColors.emptyText} text-sm italic`}>
-                    Drop projects here
-                  </div>
-                )}
+            return (
+              <div
+                key={key}
+                className={`rounded-xl border-2 p-4 transition-all duration-200 ${isDropTarget
+                  ? `${colors.dropzone} border-dashed scale-[1.005]`
+                  : `${colors.bg} ${colors.border}`
+                  }`}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver(prev => {
+                    if (prev?.column === key && prev?.cardId !== null) return prev;
+                    return { column: key, cardId: null, position: 'after' };
+                  });
+                }}
+                onDragLeave={(e) => {
+                  if ((e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) return;
+                  setDragOver(null);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const id = parseInt(e.dataTransfer.getData('text/plain'));
+                  if (!isNaN(id)) handleDrop(key, id);
+                }}
+              >
+                {/* Row Header */}
+                <div className="flex items-center gap-3 mb-3">
+                  <h2 className={`font-bold ${getFontSizeClass('text-base')} uppercase tracking-wider ${colors.header}`}>
+                    {label}
+                  </h2>
+                  <span className={`${getFontSizeClass('text-xs')} font-bold px-2 py-0.5 rounded-full ${colors.count}`}>
+                    {colProjects.length}
+                  </span>
+                </div>
 
-                {/* End-of-column drop indicator */}
-                {isDropTarget && dragOver?.cardId === null && colProjects.length > 0 && (
-                  <div className={`h-0.5 ${dragColors.dropIndicator} rounded-full shadow-sm shadow-blue-400`} />
-                )}
+                {/* Cards in a wrapping flex row */}
+                <div className="flex flex-wrap gap-3">
+                  {colProjects.map((project) => {
+                    const isTarget = dragOver?.column === key && dragOver?.cardId === project.id;
+                    const isDragging = draggedId === project.id;
+                    return (
+                      <Fragment key={project.id}>
+                        {isTarget && dragOver!.position === 'before' && (
+                          <div className={`w-1 self-stretch ${dragColors.dropIndicator} rounded-full shadow-sm shadow-blue-400`} />
+                        )}
+                        <div
+                          className="w-64 flex-shrink-0"
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                            const position: 'before' | 'after' = e.clientX < rect.left + rect.width / 2 ? 'before' : 'after';
+                            setDragOver({ column: key, cardId: project.id, position });
+                          }}
+                        >
+                          <ProjectCard
+                            project={project}
+                            todoCount={todos[project.id]?.length || 0}
+                            isDragging={isDragging}
+                            fontSizeLevel={fontSizeLevel}
+                            getFontSizeClass={getFontSizeClass}
+                            onDragStart={() => handleDragStart(project.id)}
+                            onDragEnd={handleDragEnd}
+                            onDragOver={(e) => e.preventDefault()}
+                            onClick={() => { if (!isDragging) setSelectedProject(project); }}
+                            onDelete={() => handleDelete(project.id)}
+                            onEdit={() => setEditingProject(project)}
+                          />
+                        </div>
+                        {isTarget && dragOver!.position === 'after' && (
+                          <div className={`w-1 self-stretch ${dragColors.dropIndicator} rounded-full shadow-sm shadow-blue-400`} />
+                        )}
+                      </Fragment>
+                    );
+                  })}
+
+                  {colProjects.length === 0 && (
+                    <div className={`flex items-center justify-center h-16 w-full ${pageColors.emptyText} text-sm italic`}>
+                      Drop projects here
+                    </div>
+                  )}
+
+                  {/* End-of-row drop indicator */}
+                  {isDropTarget && dragOver?.cardId === null && colProjects.length > 0 && (
+                    <div className={`w-1 self-stretch ${dragColors.dropIndicator} rounded-full shadow-sm shadow-blue-400`} />
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Project Detail Modal */}
       {selectedProject && (
