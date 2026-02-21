@@ -517,7 +517,7 @@ export default function KanbanPage() {
                 </div>
 
                 {/* Cards in a wrapping flex row */}
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-2 sm:gap-3">
                   {colProjects.map((project) => {
                     const isTarget = dragOver?.column === key && dragOver?.cardId === project.id;
                     const isDragging = draggedId === project.id;
@@ -527,7 +527,7 @@ export default function KanbanPage() {
                           <div className={`w-1 self-stretch ${dragColors.dropIndicator} rounded-full shadow-sm shadow-blue-400`} />
                         )}
                         <div
-                          className="w-64 flex-shrink-0"
+                          className="w-[calc(50%-0.25rem)] sm:w-48 md:w-56 lg:w-64 flex-shrink-0"
                           onDragOver={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
