@@ -7,12 +7,16 @@ interface ProjectFormProps {
   project?: Project;
   onSubmit: (data: Partial<Project>) => Promise<void>;
   onCancel: () => void;
+  fontSizeLevel?: number;
+  getFontSizeClass?: (baseClass: string) => string;
 }
 
 export default function ProjectForm({
   project,
   onSubmit,
   onCancel,
+  fontSizeLevel,
+  getFontSizeClass,
 }: ProjectFormProps) {
   const [formData, setFormData] = useState({
     name: project?.name || '',
